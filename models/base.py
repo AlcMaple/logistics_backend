@@ -1,19 +1,35 @@
-from sqlalchemy import Column, Integer, DateTime, Boolean
-from sqlalchemy.sql import func
+from datetime import datetime
+from typing import Optional
+from sqlmodel import SQLModel, Field
+import uuid
 
-from config.database import Base
 
-
-class BaseModel(Base):
-    __abstract__ = True  # 抽象基类声明
-    id = Column(Integer, primary_key=True, index=True)  # index，自动创建索引
-    created_at = Column(
-        DateTime(timezone=True),  # 带时区的时间戳类型
-        server_default=func.now(),  # 数据库服务器默认值，记录当前时间
+class BaseModel(SQLModel):
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow, description="创建时间"
     )
-    updated_at = Column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),  # 数据库更新时，自动更新时间戳
+    updated_at: datetime = Field(
+        default_factory=datetime.utcnow, description="更新时间"
     )
-    is_deleted = Column(Boolean, default=False)  # 逻辑删除，非物理删除
+
+
+class Config:
+    """SQLModel 配置"""
+
+    # 启用ORM 模式，支持 from_orm 方法
+    from_attributes = True
+    # JSON序列化使用枚举值
+    use_enum_values = True
+
+
+def generate_uuid() -> str:
+    """
+    生成UUID字符串
+
+    Returns:
+        str: UUID字符串
+
+    Notes:
+        企业级实践：统一UUID生成函数，便于后续扩展和管理
+    """
+    return str(uuid.uuid4())

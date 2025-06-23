@@ -18,13 +18,9 @@ class Company(BaseModel, table=True):
         default_factory=generate_uuid, primary_key=True, description="企业ID"
     )
 
-    company_name: str = Field(
-        max_length=100, description="企业名称", example="数字化智能"
-    )
+    company_name: str = Field(max_length=100, description="企业名称")
 
-    invite_code: str = Field(
-        max_length=8, unique=True, description="企业邀请码", example="ABCDEFGH"
-    )
+    invite_code: str = Field(max_length=8, unique=True, description="企业邀请码")
 
     operator_type: OperatorTypeEnum = Field(
         default=OperatorTypeEnum.CLIENT, description="操作员类型"
@@ -34,9 +30,7 @@ class Company(BaseModel, table=True):
         default=0.0, ge=0.0, description="企业钱包余额"  # 余额不能为负数
     )
 
-    administrator_name: str = Field(
-        max_length=50, description="管理员姓名", example="张三"
-    )
+    administrator_name: str = Field(max_length=50, description="管理员姓名")
 
     administrator_phone: str = Field(max_length=20, description="管理员手机号")
 
@@ -50,27 +44,28 @@ class CompanyCreate(BaseModel):
     """企业创建模型"""
 
     company_name: str = Field(max_length=100)
-    administrator_name: str = Field(
-        None, max_length=50, description="管理员姓名", example="李四"
-    )
+    administrator_name: str = Field(None, max_length=50, description="管理员姓名")
     administrator_phone: str = Field(
         None,
         max_length=20,
         description="管理员手机号",
-        example="18800001234",
     )
-    administrator_password: str = Field(
-        None, max_length=32, description="管理员密码", example="734567"
-    )
+    administrator_password: str = Field(None, max_length=32, description="管理员密码")
     operator_type: OperatorTypeEnum = OperatorTypeEnum.CLIENT
 
 
 class CompanyUpdate(BaseModel):
     """企业更新模型"""
 
-    administrator_name: str = Field(None, max_length=50)
-    administrator_phone: str = Field(None, max_length=20)
-    administrator_password: str = Field(None, max_length=255)
+    administrator_name: str = Field(
+        max_length=50, min_length=1, description="管理员姓名"
+    )
+    administrator_phone: str = Field(
+        max_length=20, min_length=11, description="管理员手机号"
+    )
+    administrator_password: str = Field(
+        max_length=255, min_length=1, description="管理员密码"
+    )
 
 
 class CompanyResponse(BaseModel):
@@ -82,6 +77,7 @@ class CompanyResponse(BaseModel):
     operator_type: OperatorTypeEnum
     administrator_name: str
     administrator_phone: str
+    administrator_password: str
     created_at: str
     updated_at: str
 

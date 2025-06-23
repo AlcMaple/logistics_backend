@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 import uvicorn
 
 from config.settings import settings
+from api.router import router as api_router
 
 
 def create_app() -> FastAPI:
@@ -21,6 +22,9 @@ def create_app() -> FastAPI:
         allow_headers=["*"],  # 允许所有头部
     )
 
+    # API路由
+    app.include_router(api_router, prefix="/api")
+
     return app
 
 
@@ -28,9 +32,9 @@ app = create_app()
 
 if __name__ == "__main__":
     uvicorn.run(
-        app,
+        "main:app",
         host="0.0.0.0",
-        port=8000,
+        port=8001,
         reload=True if settings.ENVIRONMENT == "development" else False,
         workers=1 if settings.ENVIRONMENT == "development" else 4,  # 线程数
     )

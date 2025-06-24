@@ -37,7 +37,6 @@ class TestPwdUtils:
         hashed1, salt1 = hash_password(password)
         hashed2, salt2 = hash_password(password)
 
-        # 不同盐值应该产生不同的哈希
         assert salt1 != salt2, "自动生成的盐值应该不同"
         assert hashed1 != hashed2, "不同盐值应该产生不同哈希"
         print(f"自动盐值密码加密测试通过")
@@ -47,7 +46,6 @@ class TestPwdUtils:
         password = "12345"
         hashed, salt = hash_password(password)
 
-        # 验证正确密码
         is_valid = verify_password(password, hashed, salt)
         assert is_valid == True, "正确密码验证应该通过"
         print(f"正确密码验证测试通过")
@@ -58,7 +56,6 @@ class TestPwdUtils:
         wrong_password = "123456"
         hashed, salt = hash_password(password)
 
-        # 验证错误密码
         is_valid = verify_password(wrong_password, hashed, salt)
         assert is_valid == False, "错误密码验证应该失败"
         print(f"错误密码验证测试通过")
@@ -73,7 +70,6 @@ class TestPwdUtils:
         assert salt1 != salt2, "盐值应该不同"
         assert hashed1 != hashed2, "相同密码不同盐值应该产生不同哈希"
 
-        # 但验证应该都能通过
         assert verify_password(password, hashed1, salt1) == True
         assert verify_password(password, hashed2, salt2) == True
 

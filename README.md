@@ -84,13 +84,13 @@ INSERT INTO companies (
     updated_at
 ) VALUES (
     '998a5805-ff3d-477d-a598-8348db542ccf',
-    '测试企业',
-    'ABCDEFGH',
+    '数字化智能',
+    'RYJJJBQM',
     'CLIENT',
     1000.00,
-    '管理员张三',
+    '张三',
     '18800001234',
-    '123456',
+    '734567',
     NOW(),
     NOW()
 );

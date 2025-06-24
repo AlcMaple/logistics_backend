@@ -28,13 +28,13 @@ class ResponseCode:
     SUCCESS = 200
 
     # 客户端错误
-    BAD_REQUEST = 400  # 请求参数错误
-    UNAUTHORIZED = 401  # 认证失败（未登录或token无效）
-    FORBIDDEN = 403  # 权限不足（已认证但无权限访问）
-    NOT_FOUND = 404  # 资源不存在
+    BAD_REQUEST = 400
+    UNAUTHORIZED = 401
+    FORBIDDEN = 403
+    NOT_FOUND = 404
 
     # 服务器错误
-    INTERNAL_ERROR = 500  # 服务器内部错误
+    INTERNAL_ERROR = 500
 
 
 def success_response(
@@ -66,9 +66,6 @@ def error_response(
         code: 业务错误码
         http_status: HTTP状态码
         data: 错误详情数据
-
-    Returns:
-        JSONResponse: 统一格式的错误响应
     """
     response = ApiResponse(code=code, message=message, data=data)
     return JSONResponse(status_code=http_status, content=response.model_dump())

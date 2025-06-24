@@ -7,9 +7,9 @@ from .settings import settings
 # 数据库引擎
 engine = create_engine(
     settings.database_url,
-    pool_pre_ping=True,  # 每次从连接池获取连接前先测试连接是否有效
-    echo=settings.ENVIRONMENT == "development",  # 输出SQL日志
-    pool_recycle=3600,  # 1小时回收连接，避免MySQL timeout
+    pool_pre_ping=True,
+    echo=settings.ENVIRONMENT == "development",
+    pool_recycle=3600,
 )
 
 

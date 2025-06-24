@@ -67,9 +67,6 @@ async def get_company(company_id: str, db: Session = Depends(get_db)) -> JSONRes
     Args:
         company_id: 企业UUID
         db: 数据库会话
-
-    Returns:
-        JSONResponse: 企业信息或错误信息
     """
     try:
         company = db.get(Company, company_id)
@@ -94,7 +91,7 @@ async def get_company(company_id: str, db: Session = Depends(get_db)) -> JSONRes
         )
 
     except Exception as e:
-        print(f"获取企业信息错误: {e}")  # 添加调试日志
+        print(f"获取企业信息错误: {e}")
         print(f"错误类型: {type(e)}")
         return internal_error_response("获取企业信息失败")
 
@@ -143,11 +140,8 @@ async def update_company_admin_info(
 
     Args:
         company_id: 企业UUID
-        update_data: 更新数据（必须包含姓名、手机号、密码三个字段）
+        update_data: 更新数据
         db: 数据库会话
-
-    Returns:
-        JSONResponse: 更新结果
     """
     try:
         # 获取企业
@@ -155,7 +149,7 @@ async def update_company_admin_info(
         if not company:
             return not_found_response("企业不存在")
 
-        # 验证字段不为空
+        # 验证字段
         if not update_data.administrator_name.strip():
             return param_error_response("管理员姓名不能为空")
 

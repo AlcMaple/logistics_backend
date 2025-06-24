@@ -36,7 +36,7 @@ class Company(BaseModel, table=True):
 
     administrator_password: str = Field(max_length=255, description="哈希密码")
 
-    # 关联关系：一个企业有多个用户
+    # 关联关系
     users: List["User"] = Relationship(back_populates="company")
 
 

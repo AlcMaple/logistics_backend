@@ -12,14 +12,16 @@ def create_app() -> FastAPI:
         title=settings.PROJECT_NAME,
         version=settings.VERSION,
         description="物流系统后端API",
+        docs_url="/docs" if settings.is_development else None,
+        redoc_url="/redoc" if settings.is_development else None,
     )
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # 允许的域名
-        allow_credentials=True,  # 允许跨域请求携带凭据（如 cookies、HTTP认证等）
-        allow_methods=["*"],  # 允许所有方法（GET, POST, PUT, DELETE等）
-        allow_headers=["*"],  # 允许所有头部
+        allow_origins=settings.CORS_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
     # API路由
@@ -36,5 +38,5 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=8001,
         reload=True if settings.ENVIRONMENT == "development" else False,
-        workers=1 if settings.ENVIRONMENT == "development" else 4,  # 线程数
+        workers=1 if settings.ENVIRONMENT == "development" else 4,
     )

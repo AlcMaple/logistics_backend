@@ -79,12 +79,9 @@ async def create_user(
     Args:
         user_data: 员工信息
         db: 数据库会话
-
-    Returns:
-        JSONResponse: 添加结果
     """
     try:
-        # 验证必填字段不为空
+        # 验证字段
         if not user_data.nick_name.strip():
             return param_error_response("员工姓名不能为空")
 
@@ -109,14 +106,14 @@ async def create_user(
         if not company:
             return not_found_response("企业不存在")
 
-        # 检查手机号是否已存在
+        # 检查手机号是否存在
         existing_phone = db.exec(
             select(User).where(User.phone == user_data.phone, User.is_deleted == False)
         ).first()
         if existing_phone:
             return param_error_response("手机号已存在")
 
-        # 检查工号是否已存在
+        # 检查工号是否存在
         existing_job_number = db.exec(
             select(User).where(
                 User.job_number == user_data.job_number, User.is_deleted == False
@@ -145,7 +142,7 @@ async def create_user(
         db.commit()
         db.refresh(new_user)
 
-        # 构造响应数据
+        # 用户数据
         response_data = UserResponse(
             user_id=new_user.user_id,
             nick_name=new_user.nick_name,
@@ -386,16 +383,13 @@ async def update_user(
     Args:
         user_data: 更新的员工信息
         db: 数据库会话
-
-    Returns:
-        JSONResponse: 更新结果
     """
     try:
         # 验证user_id
         if not user_data.user_id:
             return param_error_response("员工ID不能为空")
 
-        # 验证必填字段不为空
+        # 验证字段
         if not user_data.nick_name.strip():
             return param_error_response("员工姓名不能为空")
 
@@ -412,7 +406,7 @@ async def update_user(
         if not validate_phone(user_data.phone):
             return param_error_response("手机号格式错误")
 
-        # 查找要更新的员工
+        # 查找更新的员工
         user = db.exec(
             select(User).where(
                 User.user_id == user_data.user_id, User.is_deleted == False
@@ -427,7 +421,7 @@ async def update_user(
         if not company:
             return not_found_response("所属企业不存在")
 
-        # 检查手机号是否已被其他员工使用
+        # 检查手机号
         existing_phone = db.exec(
             select(User).where(
                 User.phone == user_data.phone.strip(),
@@ -438,11 +432,11 @@ async def update_user(
         if existing_phone:
             return param_error_response("手机号已被其他员工使用")
 
-        # 检查工号是否已被其他员工使用
+        # 检查工号
         existing_job_number = db.exec(
             select(User).where(
                 User.job_number == user_data.job_number.strip(),
-                User.user_id != user_data.user_id,  # 排除当前用户
+                User.user_id != user_data.user_id,
                 User.is_deleted == False,
             )
         ).first()
@@ -466,7 +460,7 @@ async def update_user(
         db.commit()
         db.refresh(user)
 
-        # 构造响应数据
+        # 用户数据
         response_data = UserResponse(
             user_id=user.user_id,
             nick_name=user.nick_name,
@@ -530,12 +524,12 @@ async def delete_user(
         db: 数据库会话
     """
     try:
-        # 查找要逻辑删除的员工
+        # 查找要删除的员工
         user = db.get(User, user_id)
         if not user:
             return not_found_response("员工不存在")
 
-        # 逻辑删除员工
+        # 删除员工
         user.is_deleted = True
         db.add(user)
         db.commit()

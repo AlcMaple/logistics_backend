@@ -28,12 +28,13 @@ class Settings(BaseSettings):
     def database_url(self) -> str:
         return f"mysql+pymysql://{self.MYSQL_USER}:{self.MYSQL_PASSWORD}@{self.MYSQL_SERVER}:{self.MYSQL_PORT}/{self.MYSQL_DATABASE}"
 
-    # @property
-    # def is_development(self) -> bool:
-    #     return self.ENVIRONMENT == "development"
+    @property
+    def is_development(self) -> bool:
+        return self.ENVIRONMENT == "development"
 
-    # @property
-    # def is_production(self) -> bool:
-    #     return self.ENVIRONMENT == "production"
+    @property
+    def is_production(self) -> bool:
+        return self.ENVIRONMENT == "production"
+
 
 settings = Settings()

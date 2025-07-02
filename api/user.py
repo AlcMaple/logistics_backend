@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from sqlmodel import Session, select, func
 from datetime import datetime
+import traceback
 
 from models.user import (
     User,
@@ -163,7 +164,6 @@ async def create_user(
         db.rollback()
         print(f"添加员工错误: {e}")
         print(f"错误类型: {type(e)}")
-        import traceback
 
         print(f"完整错误信息: {traceback.format_exc()}")
         return internal_error_response("员工添加失败")

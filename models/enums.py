@@ -34,3 +34,14 @@ class OperatorTypeEnum(str, Enum):
 
     CLIENT = "CLIENT"  # 用户
     PLATFORM = "PLATFORM"  # 平台
+
+
+class OrderStatusEnum(str, Enum):
+    """
+    订单状态枚举
+    """
+
+    APPEALING = "申诉中"
+    PENDING_PAYMENT = "待支付"
+    PENDING_SETTLEMENT = "待结算"
+    SETTLED = "已结算"

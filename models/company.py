@@ -1,8 +1,6 @@
-from typing import Optional, List
-from sqlmodel import SQLModel, Field, Relationship
+from typing import List
+from sqlmodel import Field, Relationship
 import random
-import string
-
 from .base import BaseModel, generate_uuid
 from .enums import OperatorTypeEnum
 

@@ -42,8 +42,8 @@ class DriverResponse(BaseModel):
     parking_fee: int
     carry_fee: int
     wait_fee: int
-    highway_bill_imgs: Optional[str]
-    parking_bill_imgs: Optional[str]
+    highway_bill_imgs: Optional[str] = ""
+    parking_bill_imgs: Optional[str] = ""
     except_highway_fee: int
     except_parking_fee: int
     except_carry_fee: int
@@ -134,4 +134,6 @@ async def get_fee(
 async def confirm_fee(
     data: DriverConfirmRequest, db: Session = Depends(get_db)
 ) -> JSONResponse:
+    if not all([data.driver_id, data.order_id, data.path_id]):
+        return param_error_response("所有字段均不能为空")
     return success_response("费用确认成功")

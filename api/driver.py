@@ -15,6 +15,7 @@ from utils.response import (
 )
 from models.fee import Fee
 from websocket.manager import send_message_to_type
+from models.enums import OrderStatusEnum
 
 router = APIRouter(
     prefix="/driver",
@@ -167,6 +168,15 @@ async def confirm_fee(
 ) -> JSONResponse:
     if not all([data.driver_id, data.order_id, data.path_id]):
         return param_error_response("所有字段均不能为空")
+
+    # 更新费用表，status 为PENDING_PAYMENT
+    fee = db.query(Fee).filter_by(order_id=data.order_id, path_id=data.path_id).first()
+    if not fee:
+        return not_found_response("费用不存在")
+
+    fee.status = OrderStatusEnum.PENDING_PAYMENT
+    db.commit()
+    db.refresh(fee)
 
     # 构建确认消息
     confirm_message = {

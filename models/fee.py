@@ -14,7 +14,7 @@ class Fee(SQLModel, table=True):
     path_id: str = Field(description="运单号")
     order_id: str = Field(description="订单号")
     status: OrderStatusEnum = Field(
-        default=OrderStatusEnum.PENDING_PAYMENT, description="订单状态"
+        default=OrderStatusEnum.APPEALING, description="订单状态"
     )
     total_price: int = Field(default=0, description="基本路费（分）")
     driver_fee: int = Field(default=0, description="司机费用（分）")

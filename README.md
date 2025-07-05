@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS fees (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     path_id VARCHAR(50) NOT NULL COMMENT '运单号',
     order_id VARCHAR(50) NOT NULL COMMENT '订单号',
-    status ENUM('APPEALING', 'PENDING_PAYMENT', 'PENDING_SETTLEMENT', 'SETTLED') NOT NULL DEFAULT 'PENDING_PAYMENT' COMMENT '订单状态',
+    status ENUM('APPEALING', 'PENDING_PAYMENT', 'DELIVERING') NOT NULL DEFAULT 'APPEALING' COMMENT '订单状态',
     total_price INT NOT NULL DEFAULT 0 COMMENT '基本路费（分）',
     driver_fee INT NOT NULL DEFAULT 0 COMMENT '司机费用（分）',
     highway_fee INT NOT NULL DEFAULT 0 COMMENT '高速费（分）',
@@ -182,7 +182,7 @@ INSERT INTO fees (
  '/imgs/receipt1.jpg', '/imgs/parking1.jpg', '/imgs/highway1.jpg', NULL, NULL,
  2000, 1000, 1500, 2500, '平台A', FALSE, '998a5805-ff3d-477d-a598-8348db542ccf', NOW(), NOW()),
 
-('fee002', 'path002', 'order002', 'PENDING_SETTLEMENT', 15000, 4000, 3000, 2000, 2000, 4000, NOW(),
+('fee002', 'path002', 'order002', 'DELIVERING', 15000, 4000, 3000, 2000, 2000, 4000, NOW(),
  '/imgs/receipt2.jpg', '/imgs/parking2.jpg', '/imgs/highway2.jpg', NULL, NULL,
  3000, 2000, 2000, 4000, '平台B', TRUE, NULL, NOW(), NOW()),
 
@@ -190,7 +190,7 @@ INSERT INTO fees (
  NULL, NULL, NULL, '照片模糊', '票据缺失',
  1000, 500, 1000, 1500, '平台C', FALSE, NULL, NOW(), NOW()),
 
-('fee004', 'path004', 'order004', 'SETTLED', 12000, 3500, 2500, 1500, 1000, 3500, NOW(),
+('fee004', 'path004', 'order004', 'DELIVERING', 12000, 3500, 2500, 1500, 1000, 3500, NOW(),
  '/imgs/receipt4.jpg', NULL, '/imgs/highway4.jpg', NULL, NULL,
  2500, 1500, 1000, 3500, '平台D', TRUE, '998a5805-ff3d-477d-a598-8348db542ccf', NOW(), NOW());
 ```

@@ -43,5 +43,4 @@ class OrderStatusEnum(str, Enum):
 
     APPEALING = "申诉中"
     PENDING_PAYMENT = "待支付"
-    PENDING_SETTLEMENT = "待结算"
-    SETTLED = "已结算"
+    DELIVERING = "已支付"

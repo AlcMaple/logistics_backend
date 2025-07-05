@@ -1,10 +1,13 @@
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, Field
 from uuid import uuid4
-from sqlmodel import Session
+from sqlmodel import Session, select, func
 from typing import Optional
 from datetime import datetime
+from fastapi import Query
+
 
 from config.database import get_db
 from utils.response import (
@@ -13,7 +16,12 @@ from utils.response import (
     param_error_response,
     internal_error_response,
 )
-from models.fee import Fee
+from models.fee import (
+    Fee,
+    FeeListRequest,
+    FeeResponse,
+    FeeListResponse,
+)
 from websocket.manager import send_message_to_type
 from models.enums import OrderStatusEnum
 
@@ -194,3 +202,90 @@ async def confirm_fee(
     await send_message_to_type("client", confirm_message)
 
     return success_response("费用确认成功")
+
+
+@router.get(
+    "/list",
+    summary="分页查询费用列表",
+    description="分页查询费用信息，根据订单号搜索和状态筛选",
+)
+async def get_fee_list(
+    page: int = Query(1, description="当前页码", ge=1),
+    size: int = Query(10, description="每页数量", ge=1),
+    status: Optional[str] = Query(None, description="状态（可选）"),
+    search: Optional[str] = Query(None, description="订单号搜索关键词（可选）"),
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    """
+    分页查询费用列表
+    """
+
+    try:
+        query = select(Fee)
+
+        if status:
+            query = query.where(Fee.status == status)
+
+        if search and search.strip():
+            search_term = f"%{search.strip()}%"
+            query = query.where(Fee.order_id.like(search_term))
+
+        count_query = select(func.count(Fee.fee_id))
+
+        if status:
+            count_query = count_query.where(Fee.status == status)
+        if search and search.strip():
+            search_term = f"%{search.strip()}%"
+            count_query = count_query.where(Fee.order_id.like(search_term))
+
+        total = db.exec(count_query).first()
+
+        offset = (page - 1) * size
+        total_pages = (total + size - 1) // size
+
+        query = query.offset(offset).limit(size)
+        query = query.order_by(Fee.created_at.desc())
+
+        fees = db.exec(query).all()
+
+        fee_items = [
+            FeeResponse(
+                fee_id=fee.fee_id,
+                path_id=fee.path_id,
+                order_id=fee.order_id,
+                status=fee.status,
+                total_price=fee.total_price,
+                driver_fee=fee.driver_fee,
+                highway_fee=fee.highway_fee,
+                parking_fee=fee.parking_fee,
+                carry_fee=fee.carry_fee,
+                wait_fee=fee.wait_fee,
+                order_time=fee.order_time.isoformat() if fee.order_time else "",
+                highway_bill_imgs=fee.highway_bill_imgs,
+                parking_bill_imgs=fee.parking_bill_imgs,
+                company_id=fee.company_id,
+                created_at=fee.created_at.isoformat(),
+                updated_at=fee.updated_at.isoformat(),
+            )
+            for fee in fees
+        ]
+
+        response_data = FeeListResponse(
+            items=fee_items,
+            total=total,
+            page=page,
+            size=size,
+            total_pages=total_pages,
+        )
+
+        return success_response(
+            data=jsonable_encoder(response_data),
+            message="获取费用列表成功",
+        )
+
+    except Exception as e:
+        print(f"获取费用列表错误: {e}")
+        import traceback
+
+        print(f"完整错误信息: {traceback.format_exc()}")
+        return internal_error_response("获取费用列表失败")

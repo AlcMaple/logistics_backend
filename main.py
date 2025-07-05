@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request, status
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -48,6 +49,7 @@ finance_app.include_router(finance_router, prefix="/api")
 app.include_router(ws_router, prefix="/api")
 
 app.mount("/finance", finance_app)
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 if __name__ == "__main__":
     uvicorn.run(

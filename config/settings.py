@@ -10,12 +10,12 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
     ENVIRONMENT: str = "development"  # 生产环境：production
 
-    # # 服务器配置
-    # HOST: str = "0.0.0.0"
-    # PORT: int = 8001
+    # 服务器配置
+    HOST: str = "0.0.0.0"
+    PORT: int = 8001
 
-    # # CORS配置
-    # CORS_ORIGINS: List[str] = ["*"]
+    # CORS配置
+    CORS_ORIGINS: List[str] = ["*"]
 
     # 数据库配置
     MYSQL_SERVER: str = "localhost"

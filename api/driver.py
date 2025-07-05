@@ -213,7 +213,7 @@ async def get_fee_list(
     page: int = Query(1, description="当前页码", ge=1),
     size: int = Query(10, description="每页数量", ge=1),
     status: Optional[str] = Query(None, description="状态（可选）"),
-    search: Optional[str] = Query(None, description="订单号搜索关键词（可选）"),
+    keyword: Optional[str] = Query(None, description="订单号搜索关键词（可选）"),
     db: Session = Depends(get_db),
 ) -> JSONResponse:
     """
@@ -226,16 +226,16 @@ async def get_fee_list(
         if status:
             query = query.where(Fee.status == status)
 
-        if search and search.strip():
-            search_term = f"%{search.strip()}%"
+        if keyword and keyword.strip():
+            search_term = f"%{keyword.strip()}%"
             query = query.where(Fee.order_id.like(search_term))
 
         count_query = select(func.count(Fee.fee_id))
 
         if status:
             count_query = count_query.where(Fee.status == status)
-        if search and search.strip():
-            search_term = f"%{search.strip()}%"
+        if keyword and keyword.strip():
+            search_term = f"%{keyword.strip()}%"
             count_query = count_query.where(Fee.order_id.like(search_term))
 
         total = db.exec(count_query).first()

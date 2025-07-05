@@ -17,11 +17,11 @@ async def websocket_connections(client):
     建立三种类型的WebSocket连接用于测试
     """
     # 平台端连接
-    with client.websocket_connect("/ws/platform") as platform:
+    with client.websocket_connect("/api/platform") as platform:
         # 客户端连接
-        with client.websocket_connect("/ws/client") as client_conn:
+        with client.websocket_connect("/api/client") as client_conn:
             # 司机端连接
-            with client.websocket_connect("/ws/driver") as driver:
+            with client.websocket_connect("/api/driver") as driver:
                 yield platform, client_conn, driver
 
 
@@ -61,7 +61,7 @@ async def test_fee_submission_push_notification(
     }
 
     # 发送POST请求
-    response = client.post("/driver", json=fee_data)
+    response = client.post("/finance/api/driver", json=fee_data)
     assert response.status_code == 200
 
     # 检查平台端和客户端是否收到推送
@@ -94,7 +94,7 @@ async def test_fee_confirmation_push_notification(
         "path_id": "path_789",
     }
 
-    response = client.post("/driver/confirm", json=confirm_data)
+    response = client.post("/finance/api/driver/confirm", json=confirm_data)
     assert response.status_code == 200
 
     # 检查平台端和客户端是否收到推送

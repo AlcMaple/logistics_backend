@@ -109,7 +109,21 @@ async def submit_driver_fee(
         # 只推送给平台端和客户端，不推送给司机端
         await send_message_to_type("platform", push_message)
         await send_message_to_type("client", push_message)
-        return success_response(message="司机提交费用成功", data=new_fee.model_dump())
+
+        response_data = {
+            "fee_id": new_fee.fee_id,
+            "path_id": new_fee.path_id,
+            "order_id": new_fee.order_id,
+            "highway_fee": new_fee.highway_fee,
+            "parking_fee": new_fee.parking_fee,
+            "carry_fee": new_fee.carry_fee,
+            "wait_fee": new_fee.wait_fee,
+            "highway_bill_imgs": new_fee.highway_bill_imgs,
+            "parking_bill_imgs": new_fee.parking_bill_imgs,
+            "submit_time": new_fee.created_at.isoformat(),
+        }
+
+        return success_response(message="司机提交费用成功", data=response_data)
 
     except Exception as e:
         db.rollback()

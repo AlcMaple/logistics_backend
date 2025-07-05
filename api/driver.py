@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, status, APIRouter, Depends
+from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from uuid import uuid4
@@ -14,6 +14,7 @@ from utils.response import (
     internal_error_response,
 )
 from models.fee import Fee
+from websocket.manager import send_message_to_type
 
 router = APIRouter(
     prefix="/driver",
@@ -22,18 +23,14 @@ router = APIRouter(
 
 
 class DriverSubmitRequest(BaseModel):
-    driver_id: str = Field(
-        ..., description="司机ID", example=""
-    )  # 使用example来兼容交互式文档
+    driver_id: str = Field(..., description="司机ID", example="")
     order_id: str = Field(..., description="订单ID", example="")
     path_id: str = Field(..., description="运单ID", example="")
     highway_fee: int = Field(..., description="高速费（分）")
     parking_fee: int = Field(..., description="停车费（分）")
     carry_fee: int = Field(..., description="搬运费（分）")
     wait_fee: int = Field(..., description="逾时等候费（分）")
-    highway_bill_imgs: Optional[str] = Field(
-        "", description="高速费图片路径"
-    )  # 默认值为空，兼容交互式文档
+    highway_bill_imgs: Optional[str] = Field("", description="高速费图片路径")
     parking_bill_imgs: Optional[str] = Field("", description="停车费图片路径")
 
 
@@ -92,6 +89,26 @@ async def submit_driver_fee(
         db.commit()
         db.refresh(new_fee)
 
+        # 构建推送消息
+        push_message = {
+            "type": "fee_submitted",
+            "data": {
+                "driver_id": data.driver_id,
+                "order_id": data.order_id,
+                "path_id": data.path_id,
+                "highway_fee": data.highway_fee,
+                "parking_fee": data.parking_fee,
+                "carry_fee": data.carry_fee,
+                "wait_fee": data.wait_fee,
+                "highway_bill_imgs": data.highway_bill_imgs,
+                "parking_bill_imgs": data.parking_bill_imgs,
+                "submit_time": datetime.utcnow().isoformat(),
+            },
+        }
+
+        # 只推送给平台端和客户端，不推送给司机端
+        await send_message_to_type("platform", push_message)
+        await send_message_to_type("client", push_message)
         return success_response(message="司机提交费用成功", data=new_fee.model_dump())
 
     except Exception as e:
@@ -136,4 +153,20 @@ async def confirm_fee(
 ) -> JSONResponse:
     if not all([data.driver_id, data.order_id, data.path_id]):
         return param_error_response("所有字段均不能为空")
+
+    # 构建确认消息
+    confirm_message = {
+        "type": "fee_confirmed",
+        "data": {
+            "driver_id": data.driver_id,
+            "order_id": data.order_id,
+            "path_id": data.path_id,
+            "confirm_time": datetime.utcnow().isoformat(),
+        },
+    }
+
+    # 推送给平台端和客户端
+    await send_message_to_type("platform", confirm_message)
+    await send_message_to_type("client", confirm_message)
+
     return success_response("费用确认成功")

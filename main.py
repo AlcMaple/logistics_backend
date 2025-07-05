@@ -6,6 +6,7 @@ import uvicorn
 
 from config.settings import settings
 from api.router import router, finance_router
+from websocket.router import ws_router
 
 
 def create_app() -> FastAPI:
@@ -43,6 +44,8 @@ finance_app = create_app()
 # API路由
 app.include_router(router, prefix="/api")
 finance_app.include_router(finance_router, prefix="/api")
+# WebSocket路由
+app.include_router(ws_router, prefix="/api")
 
 app.mount("/finance", finance_app)
 

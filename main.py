@@ -3,6 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.openapi.docs import get_swagger_ui_html
 import uvicorn
 
 from config.settings import settings
@@ -50,6 +51,27 @@ app.include_router(ws_router, prefix="/api")
 
 app.mount("/finance", finance_app)
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+@app.get("/api/docs", include_in_schema=False)
+async def custom_swagger_ui_html():
+    return get_swagger_ui_html(
+        openapi_url=app.openapi_url,
+        title=app.title + " - Swagger UI",
+        swagger_js_url="/static/swagger-ui-bundle.js",
+        swagger_css_url="/static/swagger-ui.css",
+    )
+
+
+@finance_app.get("/api/docs", include_in_schema=False)
+async def finance_custom_swagger_ui_html():
+    return get_swagger_ui_html(
+        openapi_url="/finance/openapi.json",
+        title=finance_app.title + " - Swagger UI",
+        swagger_js_url="/static/swagger-ui-bundle.js",
+        swagger_css_url="/static/swagger-ui.css",
+    )
+
 
 if __name__ == "__main__":
     uvicorn.run(

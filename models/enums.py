@@ -45,3 +45,8 @@ class OrderStatusEnum(str, Enum):
     PENDING_PAYMENT = "待支付"
     PENDING_SETTLEMENT = "待结算"
     SETTLED = "已结算"
+
+
+class RechargeStatusEnum(str, Enum):
+    UNDER_REVIEW = "审核中"
+    APPROVED = "已通过"

@@ -21,7 +21,10 @@ from models.fee import (
     FeeListRequest,
     FeeResponse,
     FeeListResponse,
+    FeePayRequest,
 )
+from models.account import Account
+from models.driver import Driver
 from websocket.manager import send_message_to_type
 from models.enums import OrderStatusEnum
 
@@ -142,7 +145,7 @@ async def submit_driver_fee(
 
 @router.get("", response_model=DriverResponse, summary="司机获取费用")
 async def get_fee(
-    order_id: str, path_id: str, driver_id: str, db: Session = Depends(get_db)
+    order_id: str, path_id: str, db: Session = Depends(get_db)
 ) -> JSONResponse:
     try:
         fee = db.query(Fee).filter_by(order_id=order_id, path_id=path_id).first()
@@ -177,12 +180,13 @@ async def confirm_fee(
     if not all([data.driver_id, data.order_id, data.path_id]):
         return param_error_response("所有字段均不能为空")
 
-    # 更新费用表，status 为PENDING_PAYMENT
+    # 更新费用表，status SETTLED
     fee = db.query(Fee).filter_by(order_id=data.order_id, path_id=data.path_id).first()
     if not fee:
         return not_found_response("费用不存在")
 
-    fee.status = OrderStatusEnum.PENDING_PAYMENT
+    fee.status = OrderStatusEnum.SETTLED
+    db.add(fee)
     db.commit()
     db.refresh(fee)
 
@@ -289,3 +293,73 @@ async def get_fee_list(
 
         print(f"完整错误信息: {traceback.format_exc()}")
         return internal_error_response("获取费用列表失败")
+
+
+@router.patch("/pay", summary="司机支付费用")
+async def pay_fee(data: FeePayRequest, db: Session = Depends(get_db)) -> JSONResponse:
+    try:
+        # 更新费用表
+        fee = db.query(Fee).filter_by(fee_id=data.fee_id).first()
+        if not fee:
+            return not_found_response("费用不存在")
+
+        # 获取客户的账户余额
+        account = db.query(Account).filter_by(company_id=fee.company_id).first()
+        if not account:
+            return not_found_response("账户不存在")
+
+        # 余额不足
+        acc_balance = account.company_account_balance
+        balance = (
+            data.total_price
+            + data.carry_fee
+            + data.wait_fee
+            + data.highway_fee
+            + data.parking_fee
+        )
+        if acc_balance < balance:
+            return param_error_response("账户余额不足")
+
+        # 扣除余额
+        account.company_account_balance -= balance
+        db.add(account)
+        db.commit()
+        db.refresh(account)
+
+        # 更新费用表
+        fee.status = OrderStatusEnum.SETTLED
+        fee.updated_at = datetime.utcnow()
+
+        # 司机增加费用
+        driver = (
+            db.query(Driver).filter_by(driver_account_id=fee.driver_account_id).first()
+        )
+        if not driver:
+            return not_found_response("司机不存在")
+        driver.driver_account_balance = driver.driver_account_balance + balance
+        db.add(driver)
+        db.commit()
+        db.refresh(driver)
+
+        # 推送消息给司机端
+        push_message = {
+            "type": "fee_paid",
+            "data": {
+                "driver_account_id": driver.driver_account_id,
+                "order_id": fee.order_id,
+                "path_id": fee.path_id,
+                "total_price": data.total_price,
+                "carry_fee": data.carry_fee,
+                "wait_fee": data.wait_fee,
+                "highway_fee": data.highway_fee,
+                "parking_fee": data.parking_fee,
+                "pay_time": datetime.utcnow().isoformat(),
+            },
+        }
+        await send_message_to_type("driver", push_message)
+
+        return success_response("费用支付成功")
+
+    except Exception as e:
+        print(f"支付费用错误: {e}")
+        return internal_error_response("支付费用失败")

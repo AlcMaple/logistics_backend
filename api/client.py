@@ -54,7 +54,7 @@ class SettlementStatusEnum(str, Enum):
 
 
 @router.get(
-    "/list",
+    "/fee/list",
     summary="分页查询结算列表",
     description="分页查询结算信息，支持派单渠道、订单状态、运单号、订单号和时间范围筛选",
 )

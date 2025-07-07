@@ -36,7 +36,6 @@ from models.account import (
 from models.driver import Driver
 from websocket.manager import send_message_to_type
 from models.enums import OrderStatusEnum, RechargeStatusEnum
-from models.order import OrderDetailResponse, Order
 
 router = APIRouter(
     prefix="/client",
@@ -75,17 +74,25 @@ async def get_settlement_list(
     分页查询结算列表
     """
     try:
-        # 基础查询，只包含待结算和已结算状态
-        query = select(Fee).where(
-            or_(
-                Fee.status == OrderStatusEnum.PENDING_SETTLEMENT,
-                Fee.status == OrderStatusEnum.SETTLED,
-            )
-        )
+        # 基础查询构建
+        query = select(Fee)
 
-        # 如果有指定状态，则进一步筛选
+        # **状态筛选逻辑**
         if status:
-            query = query.where(Fee.status == status)
+            if status == SettlementStatusEnum.PENDING_SETTLEMENT:
+                # 如果前端传的是 PENDING_SETTLEMENT，实际查询 PENDING_PAYMENT
+                query = query.where(Fee.status == OrderStatusEnum.PENDING_PAYMENT)
+            else:
+                # 其他状态（如 SETTLED）直接查询
+                query = query.where(Fee.status == status)
+        else:
+            # 如果未指定状态，查询待支付和已结算两种状态
+            query = query.where(
+                or_(
+                    Fee.status == OrderStatusEnum.PENDING_PAYMENT,
+                    Fee.status == OrderStatusEnum.SETTLED,
+                )
+            )
 
         # 派单渠道筛选
         if dispatch_channel and dispatch_channel.strip():
@@ -106,7 +113,6 @@ async def get_settlement_list(
             try:
                 start_date = datetime.strptime(start_time, "%Y-%m-%d")
                 end_date = datetime.strptime(end_time, "%Y-%m-%d")
-                # 结束时间加一天，包含当天所有数据
                 end_date = end_date.replace(hour=23, minute=59, second=59)
                 query = query.where(
                     Fee.order_time >= start_date, Fee.order_time <= end_date
@@ -114,17 +120,25 @@ async def get_settlement_list(
             except ValueError:
                 return param_error_response("时间格式不正确，请使用YYYY-MM-DD格式")
 
-        # 计算总数
-        count_query = select(func.count(Fee.fee_id)).where(
-            or_(
-                Fee.status == OrderStatusEnum.PENDING_SETTLEMENT,
-                Fee.status == OrderStatusEnum.SETTLED,
-            )
-        )
+        # **计算总数（同样应用状态映射逻辑）**
+        count_query = select(func.count(Fee.fee_id))
 
-        # 应用相同的筛选条件到count查询
         if status:
-            count_query = count_query.where(Fee.status == status)
+            if status == SettlementStatusEnum.PENDING_SETTLEMENT:
+                count_query = count_query.where(
+                    Fee.status == OrderStatusEnum.PENDING_PAYMENT
+                )
+            else:
+                count_query = count_query.where(Fee.status == status)
+        else:
+            count_query = count_query.where(
+                or_(
+                    Fee.status == OrderStatusEnum.PENDING_PAYMENT,
+                    Fee.status == OrderStatusEnum.SETTLED,
+                )
+            )
+
+        # 应用其他筛选条件
         if dispatch_channel and dispatch_channel.strip():
             count_query = count_query.where(
                 Fee.dispatch_channel == dispatch_channel.strip()
@@ -157,29 +171,37 @@ async def get_settlement_list(
 
         fees = db.exec(query).all()
 
-        # 构建响应数据
-        fee_items = [
-            FeeResponse(
-                fee_id=fee.fee_id,
-                path_id=fee.path_id,
-                order_id=fee.order_id,
-                status=fee.status,
-                total_price=fee.total_price,
-                driver_fee=fee.driver_fee,
-                highway_fee=fee.highway_fee,
-                parking_fee=fee.parking_fee,
-                carry_fee=fee.carry_fee,
-                wait_fee=fee.wait_fee,
-                order_time=fee.order_time.isoformat() if fee.order_time else "",
-                highway_bill_imgs=fee.highway_bill_imgs,
-                parking_bill_imgs=fee.parking_bill_imgs,
-                company_id=fee.company_id,
-                driver_account_id=fee.driver_account_id,
-                created_at=fee.created_at.isoformat(),
-                updated_at=fee.updated_at.isoformat(),
+        # **构建响应数据（将 PENDING_PAYMENT 映射回 PENDING_SETTLEMENT）**
+        fee_items = []
+        for fee in fees:
+            # 如果状态是 PENDING_PAYMENT，返回给前端时改成 PENDING_SETTLEMENT
+            display_status = (
+                SettlementStatusEnum.PENDING_SETTLEMENT
+                if fee.status == OrderStatusEnum.PENDING_PAYMENT
+                else fee.status
             )
-            for fee in fees
-        ]
+
+            fee_items.append(
+                FeeResponse(
+                    fee_id=fee.fee_id,
+                    path_id=fee.path_id,
+                    order_id=fee.order_id,
+                    status=display_status,  # 映射后的状态
+                    total_price=fee.total_price,
+                    driver_fee=fee.driver_fee,
+                    highway_fee=fee.highway_fee,
+                    parking_fee=fee.parking_fee,
+                    carry_fee=fee.carry_fee,
+                    wait_fee=fee.wait_fee,
+                    order_time=fee.order_time.isoformat() if fee.order_time else "",
+                    highway_bill_imgs=fee.highway_bill_imgs,
+                    parking_bill_imgs=fee.parking_bill_imgs,
+                    company_id=fee.company_id,
+                    driver_account_id=fee.driver_account_id,
+                    created_at=fee.created_at.isoformat(),
+                    updated_at=fee.updated_at.isoformat(),
+                )
+            )
 
         response_data = FeeListResponse(
             items=fee_items,

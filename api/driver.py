@@ -211,39 +211,72 @@ async def confirm_fee(
 @router.get(
     "/list",
     summary="分页查询费用列表",
-    description="分页查询费用信息，根据订单号搜索和状态筛选",
+    description="分页查询费用信息，根据订单号搜索、状态筛选和时间范围查询",
 )
 async def get_fee_list(
     page: int = Query(1, description="当前页码", ge=1),
     size: int = Query(10, description="每页数量", ge=1),
     status: Optional[str] = Query(None, description="状态（可选）"),
     keyword: Optional[str] = Query(None, description="订单号搜索关键词（可选）"),
+    start_time: Optional[str] = Query(None, description="开始时间（格式：YYYY-MM-DD）"),
+    end_time: Optional[str] = Query(None, description="结束时间（格式：YYYY-MM-DD）"),
     db: Session = Depends(get_db),
 ) -> JSONResponse:
     """
     分页查询费用列表
     """
-
     try:
         query = select(Fee)
 
+        # 状态筛选（前端传"已支付"时，实际查询"已结算"）
         if status:
-            query = query.where(Fee.status == status)
+            if status == "已支付":
+                query = query.where(Fee.status == "已结算")
+            else:
+                query = query.where(Fee.status == status)
 
+        # 订单号搜索
         if keyword and keyword.strip():
             search_term = f"%{keyword.strip()}%"
             query = query.where(Fee.order_id.like(search_term))
 
+        # 时间范围筛选
+        if start_time and end_time:
+            try:
+                start_date = datetime.strptime(start_time, "%Y-%m-%d")
+                end_date = datetime.strptime(end_time, "%Y-%m-%d")
+                end_date = end_date.replace(hour=23, minute=59, second=59)
+                query = query.where(
+                    Fee.created_at >= start_date, Fee.created_at <= end_date
+                )
+            except ValueError:
+                return param_error_response("时间格式不正确，请使用YYYY-MM-DD格式")
+
+        # 计算总数（同样应用状态映射逻辑）
         count_query = select(func.count(Fee.fee_id))
 
         if status:
-            count_query = count_query.where(Fee.status == status)
+            if status == "已支付":
+                count_query = count_query.where(Fee.status == "已结算")
+            else:
+                count_query = count_query.where(Fee.status == status)
         if keyword and keyword.strip():
             search_term = f"%{keyword.strip()}%"
             count_query = count_query.where(Fee.order_id.like(search_term))
+        if start_time and end_time:
+            try:
+                start_date = datetime.strptime(start_time, "%Y-%m-%d")
+                end_date = datetime.strptime(end_time, "%Y-%m-%d")
+                end_date = end_date.replace(hour=23, minute=59, second=59)
+                count_query = count_query.where(
+                    Fee.created_at >= start_date, Fee.created_at <= end_date
+                )
+            except ValueError:
+                pass  # 前面已经处理过错误
 
         total = db.exec(count_query).first()
 
+        # 分页处理
         offset = (page - 1) * size
         total_pages = (total + size - 1) // size
 
@@ -252,27 +285,32 @@ async def get_fee_list(
 
         fees = db.exec(query).all()
 
-        fee_items = [
-            FeeResponse(
-                fee_id=fee.fee_id,
-                path_id=fee.path_id,
-                order_id=fee.order_id,
-                status=fee.status,
-                total_price=fee.total_price,
-                driver_fee=fee.driver_fee,
-                highway_fee=fee.highway_fee,
-                parking_fee=fee.parking_fee,
-                carry_fee=fee.carry_fee,
-                wait_fee=fee.wait_fee,
-                order_time=fee.order_time.isoformat() if fee.order_time else "",
-                highway_bill_imgs=fee.highway_bill_imgs,
-                parking_bill_imgs=fee.parking_bill_imgs,
-                company_id=fee.company_id,
-                created_at=fee.created_at.isoformat(),
-                updated_at=fee.updated_at.isoformat(),
+        # 构建响应数据（将"已结算"映射为"已支付"返回）
+        fee_items = []
+        for fee in fees:
+            # 状态映射：数据库里的"已结算" → 返回前端的"已支付"
+            display_status = "已支付" if fee.status == "已结算" else fee.status
+
+            fee_items.append(
+                FeeResponse(
+                    fee_id=fee.fee_id,
+                    path_id=fee.path_id,
+                    order_id=fee.order_id,
+                    status=display_status,  # 使用映射后的状态
+                    total_price=fee.total_price,
+                    driver_fee=fee.driver_fee,
+                    highway_fee=fee.highway_fee,
+                    parking_fee=fee.parking_fee,
+                    carry_fee=fee.carry_fee,
+                    wait_fee=fee.wait_fee,
+                    order_time=fee.order_time.isoformat() if fee.order_time else "",
+                    highway_bill_imgs=fee.highway_bill_imgs,
+                    parking_bill_imgs=fee.parking_bill_imgs,
+                    company_id=fee.company_id,
+                    created_at=fee.created_at.isoformat(),
+                    updated_at=fee.updated_at.isoformat(),
+                )
             )
-            for fee in fees
-        ]
 
         response_data = FeeListResponse(
             items=fee_items,

@@ -36,6 +36,8 @@ from models.account import (
 from models.driver import Driver
 from websocket.manager import send_message_to_type
 from models.enums import OrderStatusEnum, RechargeStatusEnum
+from models.order_detail import OrderDetail, OrderDetailResponse
+from models.driver import Driver
 
 router = APIRouter(
     prefix="/client",
@@ -555,3 +557,106 @@ async def update_balance_warning(
         )
     except Exception as e:
         return internal_error_response("更新余额预警设置失败")
+
+
+@router.get(
+    "/detail",
+    summary="获取结算订单详情",
+    description="根据订单号或运单号获取订单详情信息",
+)
+async def get_order_detail(
+    order_id: Optional[str] = Query(None, description="订单号"),
+    path_id: Optional[str] = Query(None, description="运单号"),
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    """
+    获取订单详情
+    order_id 和 path_id 至少传入一个
+    """
+    try:
+        # 参数验证
+        if not order_id and not path_id:
+            return param_error_response("订单号和运单号至少传入一个")
+
+        # 查询费用信息
+        fee_query = select(Fee)
+        if order_id:
+            fee_query = fee_query.where(Fee.order_id == order_id)
+        else:
+            fee_query = fee_query.where(Fee.path_id == path_id)
+
+        fee = db.exec(fee_query).first()
+        if not fee:
+            return not_found_response("订单不存在")
+
+        # 查询订单详情
+        order_detail = db.exec(
+            select(OrderDetail).where(OrderDetail.order_id == fee.order_id)
+        ).first()
+
+        # 查询司机信息
+        driver = None
+        if fee.driver_account_id:
+            driver = db.exec(
+                select(Driver).where(Driver.driver_account_id == fee.driver_account_id)
+            ).first()
+
+        # 构建响应数据
+        response_data = {
+            "path_id": fee.path_id,
+            "order_id": fee.order_id,
+            "status": fee.status,
+            "order_time": fee.order_time.isoformat() if fee.order_time else None,
+            "finish_time": (
+                order_detail.finish_time.isoformat()
+                if order_detail and order_detail.finish_time
+                else None
+            ),
+            "driver_name": driver.driver_name if driver else None,
+            "driver_phone": driver.driver_phone if driver else None,
+            "car_plate": order_detail.car_plate if order_detail else None,
+            "loading_addr": order_detail.loading_addr if order_detail else None,
+            "sender_name": order_detail.sender_name if order_detail else None,
+            "sender_phone": order_detail.sender_phone if order_detail else None,
+            "unloading_addr": order_detail.unloading_addr if order_detail else None,
+            "receiver_name": order_detail.receiver_name if order_detail else None,
+            "receiver_phone": order_detail.receiver_phone if order_detail else None,
+            "goods_volume": order_detail.goods_volume if order_detail else None,
+            "goods_num": order_detail.goods_num if order_detail else None,
+            "goods_weight": order_detail.goods_weight if order_detail else None,
+            "demand_car_type": order_detail.demand_car_type if order_detail else None,
+            "is_carpool": order_detail.is_carpool if order_detail else None,
+            "need_carry": order_detail.need_carry if order_detail else None,
+            "logistics_platform": fee.logistics_platform,
+            "other_loading_demand": (
+                order_detail.other_loading_demand if order_detail else None
+            ),
+            "total_distance": order_detail.total_distance if order_detail else None,
+            "loading_goods_imgs": (
+                order_detail.loading_goods_imgs if order_detail else None
+            ),
+            "loading_car_imgs": order_detail.loading_car_imgs if order_detail else None,
+            "unloading_goods_imgs": (
+                order_detail.unloading_goods_imgs if order_detail else None
+            ),
+            "unloading_car_imgs": (
+                order_detail.unloading_car_imgs if order_detail else None
+            ),
+            "receipt_imgs": fee.receipt_imgs,
+            "parking_bill_imgs": fee.parking_bill_imgs,
+            "highway_bill_imgs": fee.highway_bill_imgs,
+            "total_price": fee.total_price,
+            "highway_fee": fee.highway_fee,
+            "parking_fee": fee.parking_fee,
+            "carry_fee": fee.carry_fee,
+            "wait_fee": fee.wait_fee,
+        }
+
+        return success_response(data=response_data, message="获取订单详情成功")
+
+    except Exception as e:
+        print(f"获取订单详情错误: {e}")
+        import traceback
+
+        print(f"完整错误信息: {traceback.format_exc()}")
+        return internal_error_response("获取订单详情失败")

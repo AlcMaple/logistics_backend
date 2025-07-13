@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     # 数据库配置
     MYSQL_SERVER: str = "localhost"
     MYSQL_USER: str = "root"
-    MYSQL_PASSWORD: str = "123qweQWE!"  # 服务器数据库密码：Yunhai2025!
+    MYSQL_PASSWORD: str = "2333"  # 服务器数据库密码：Yunhai2025!
     MYSQL_DATABASE: str = "logistics_db"
     MYSQL_PORT: int = 3306
 

@@ -43,12 +43,12 @@ def create_app() -> FastAPI:
 app = create_app()
 finance_app = create_app()
 
-# # 只有当static目录存在时才挂载
-# if os.path.exists("static"):
-#     app.mount("/static", StaticFiles(directory="static"), name="static")
-#     print("✅ Static files mounted from local directory")
-# else:
-#     print("⚠️ Static directory not found, using CDN for docs")
+# 只有当static目录存在时才挂载
+if os.path.exists("static"):
+    app.mount("/static", StaticFiles(directory="static"), name="static")
+    print("✅ Static files mounted from local directory")
+else:
+    print("⚠️ Static directory not found, using CDN for docs")
 
 # API路由
 app.include_router(router, prefix="/api")

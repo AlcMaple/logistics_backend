@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, Field
 from uuid import uuid4
-from sqlmodel import Session, select, func, or_
+from sqlmodel import Session, select, func, or_, and_
 from typing import Optional
 from datetime import datetime
 from fastapi import Query
@@ -560,17 +560,17 @@ async def update_balance_warning(
 
 
 @router.get(
-    "/detail",
+    "/fee/detail",
     summary="获取结算订单详情",
     description="根据订单号或运单号获取订单详情信息",
 )
-async def get_order_detail(
+async def get_settlement_detail(
     order_id: Optional[str] = Query(None, description="订单号"),
     path_id: Optional[str] = Query(None, description="运单号"),
     db: Session = Depends(get_db),
 ) -> JSONResponse:
     """
-    获取订单详情
+    获取结算订单详情
     order_id 和 path_id 至少传入一个
     """
     try:
@@ -578,16 +578,31 @@ async def get_order_detail(
         if not order_id and not path_id:
             return param_error_response("订单号和运单号至少传入一个")
 
-        # 查询费用信息
+        # 查询费用信息（同时考虑order_id和path_id）
         fee_query = select(Fee)
+        conditions = []
         if order_id:
-            fee_query = fee_query.where(Fee.order_id == order_id)
-        else:
-            fee_query = fee_query.where(Fee.path_id == path_id)
+            conditions.append(Fee.order_id == order_id)
+        if path_id:
+            conditions.append(Fee.path_id == path_id)
+
+        # 使用AND连接所有条件（如果同时提供了order_id和path_id）
+        fee_query = (
+            fee_query.where(and_(*conditions))
+            if len(conditions) > 1
+            else fee_query.where(conditions[0])
+        )
 
         fee = db.exec(fee_query).first()
         if not fee:
             return not_found_response("订单不存在")
+
+        # 状态映射：数据库中的"待支付"映射为返回给前端的"待结算"
+        display_status = (
+            SettlementStatusEnum.PENDING_SETTLEMENT
+            if fee.status == OrderStatusEnum.PENDING_PAYMENT
+            else fee.status
+        )
 
         # 查询订单详情
         order_detail = db.exec(
@@ -601,11 +616,11 @@ async def get_order_detail(
                 select(Driver).where(Driver.driver_account_id == fee.driver_account_id)
             ).first()
 
-        # 构建响应数据
+        # 构建响应数据（使用映射后的状态）
         response_data = {
             "path_id": fee.path_id,
             "order_id": fee.order_id,
-            "status": fee.status,
+            "status": display_status,  # 使用映射后的状态
             "order_time": fee.order_time.isoformat() if fee.order_time else None,
             "finish_time": (
                 order_detail.finish_time.isoformat()
@@ -655,7 +670,7 @@ async def get_order_detail(
         return success_response(data=response_data, message="获取订单详情成功")
 
     except Exception as e:
-        print(f"获取订单详情错误: {e}")
+        print(f"获取结算订单详情错误: {e}")
         import traceback
 
         print(f"完整错误信息: {traceback.format_exc()}")

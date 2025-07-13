@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, Field
 from uuid import uuid4
-from sqlmodel import Session, select, func
+from sqlmodel import Session, select, func, and_
 from typing import Optional
 from datetime import datetime
 from fastapi import Query
@@ -426,14 +426,27 @@ async def get_order_detail(
 
         # 查询费用信息
         fee_query = select(Fee)
+
+        # 修改查询条件：同时考虑order_id和path_id（如果都提供了）
+        conditions = []
         if order_id:
-            fee_query = fee_query.where(Fee.order_id == order_id)
-        else:
-            fee_query = fee_query.where(Fee.path_id == path_id)
+            conditions.append(Fee.order_id == order_id)
+        if path_id:
+            conditions.append(Fee.path_id == path_id)
+
+        # 使用and_连接所有条件
+        fee_query = (
+            fee_query.where(and_(*conditions))
+            if len(conditions) > 1
+            else fee_query.where(conditions[0])
+        )
 
         fee = db.exec(fee_query).first()
         if not fee:
             return not_found_response("订单不存在")
+
+        # 状态映射：数据库里的"已结算" → 返回前端的"已支付"
+        display_status = "已支付" if fee.status == "已结算" else fee.status
 
         # 查询订单详情
         order_detail = db.exec(
@@ -447,11 +460,11 @@ async def get_order_detail(
                 select(Driver).where(Driver.driver_account_id == fee.driver_account_id)
             ).first()
 
-        # 构建响应数据
+        # 构建响应数据（使用映射后的状态）
         response_data = {
             "path_id": fee.path_id,
             "order_id": fee.order_id,
-            "status": fee.status,
+            "status": display_status,  # 使用映射后的状态
             "order_time": fee.order_time.isoformat() if fee.order_time else None,
             "finish_time": (
                 order_detail.finish_time.isoformat()

@@ -242,19 +242,19 @@ async def get_fee_list(
             search_term = f"%{keyword.strip()}%"
             query = query.where(Fee.order_id.like(search_term))
 
-        # 时间范围筛选
+        # 时间范围筛选：order_time 而非 created_at
         if start_time and end_time:
             try:
                 start_date = datetime.strptime(start_time, "%Y-%m-%d")
                 end_date = datetime.strptime(end_time, "%Y-%m-%d")
                 end_date = end_date.replace(hour=23, minute=59, second=59)
                 query = query.where(
-                    Fee.created_at >= start_date, Fee.created_at <= end_date
+                    Fee.order_time >= start_date, Fee.order_time <= end_date
                 )
             except ValueError:
                 return param_error_response("时间格式不正确，请使用YYYY-MM-DD格式")
 
-        # 计算总数（同样应用状态映射逻辑）
+        # 计算总数（同样应用状态和时间筛选逻辑）
         count_query = select(func.count(Fee.fee_id))
 
         if status:
@@ -271,7 +271,7 @@ async def get_fee_list(
                 end_date = datetime.strptime(end_time, "%Y-%m-%d")
                 end_date = end_date.replace(hour=23, minute=59, second=59)
                 count_query = count_query.where(
-                    Fee.created_at >= start_date, Fee.created_at <= end_date
+                    Fee.order_time >= start_date, Fee.order_time <= end_date
                 )
             except ValueError:
                 pass  # 前面已经处理过错误
@@ -290,7 +290,6 @@ async def get_fee_list(
         # 构建响应数据（将"已结算"映射为"已支付"返回）
         fee_items = []
         for fee in fees:
-            # 状态映射：数据库里的"已结算" → 返回前端的"已支付"
             display_status = "已支付" if fee.status == "已结算" else fee.status
 
             fee_items.append(
@@ -298,7 +297,7 @@ async def get_fee_list(
                     fee_id=fee.fee_id,
                     path_id=fee.path_id,
                     order_id=fee.order_id,
-                    status=display_status,  # 使用映射后的状态
+                    status=display_status,
                     total_price=fee.total_price,
                     driver_fee=fee.driver_fee,
                     highway_fee=fee.highway_fee,
